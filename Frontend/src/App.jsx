@@ -1,53 +1,60 @@
 import { useEffect, useState } from "react";
-import "prismjs/themes/prism-tomorrow.css";
 import prism from "prismjs";
+import "prismjs/themes/prism-tomorrow.css";
+
 import Editor from "react-simple-code-editor";
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
+
 import axios from "axios";
 import "./App.css";
 
 function App() {
   const [code, setCode] = useState(`function sum(a, b) {
   return a + b;
-}
-
-// Example usage
-const result = sum(5, 3);
-console.log(result);`);
-  const [review, setReview] = useState(``);
+}`);
+  const [review, setReview] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     prism.highlightAll();
-  }, []);
+  }, [code]);
 
-  async function reviewCode() {
+  const reviewCode = async () => {
     if (!code.trim()) {
-      setError("Please enter some code to review");
-      return;
+      return setError("⚠️ Please enter code to review.");
+    }
+
+    const isLikelyCode =
+      /[\{\};()=]|function|const|let|var|class|#include/.test(code);
+
+    if (!isLikelyCode) {
+      return setError(
+        "🚫 Only code is accepted for review. Please paste valid code."
+      );
     }
 
     setIsLoading(true);
     setError("");
-
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         "https://code-review-5bpq.onrender.com/ai/get-review",
-        { code }
+        {
+          code,
+          language: "javascript",
+        }
       );
-      setReview(response.data);
-    } catch (err) {
-      setError("Failed to get code review. Please try again.");
-      console.error("Review error:", err);
+      setReview(res.data);
+    } catch {
+      setError("🚫 Failed to get code review. Try again.");
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  const clearCode = () => {
+  const clearEditor = () => {
     setCode("");
     setReview("");
     setError("");
@@ -55,152 +62,136 @@ console.log(result);`);
 
   return (
     <div
-      className="app"
-      style={{ backgroundColor: "#1a1a1a", color: "#e0e0e0" }}
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        backgroundColor: "#0f0f0f",
+        color: "#f0f0f0",
+      }}
     >
+      {/* Header */}
       <header
-        className="app-header"
-        style={{ backgroundColor: "#121212", borderBottom: "1px solid #333" }}
+        style={{
+          height: "60px",
+          backgroundColor: "#181818",
+          borderBottom: "1px solid #2c2c2c",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 20px",
+          flexShrink: 0,
+        }}
       >
-        <div className="header-content">
-          <h1 className="app-title" style={{ color: "#ffffff" }}>
-            <span className="title-icon">🔍</span>
-            Code Review AI
-          </h1>
-          <p className="app-subtitle" style={{ color: "#aaaaaa" }}>
-            Get intelligent feedback on your code instantly
-          </p>
-        </div>
+        <h1 style={{ fontSize: "1.2rem", color: "#ffffff", margin: 0 }}>
+          🔍 Code Reviewer
+        </h1>
       </header>
 
-      <main className="main-content">
-        <div
-          className="editor-section"
-          style={{ backgroundColor: "#252525", border: "1px solid #333" }}
-        >
-          <div
-            className="section-header"
+      {/* Main Body */}
+      <div style={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
+        {/* Code Editor */}
+        <div style={{ flex: 1, padding: "16px", backgroundColor: "#1a1a1a" }}>
+          <h2 style={{ marginBottom: "12px", color: "#fff" }}>
+            💻 Code Editor
+          </h2>
+          <Editor
+            value={code}
+            onValueChange={setCode}
+            highlight={(code) =>
+              prism.highlight(code, prism.languages.javascript, "javascript")
+            }
+            padding={16}
+            placeholder="Write your code here..."
             style={{
-              backgroundColor: "#1e1e1e",
-              borderBottom: "1px solid #333",
+              fontFamily: '"Fira Code", monospace',
+              fontSize: 14,
+              height: "calc(100vh - 200px)",
+              backgroundColor: "#121212",
+              color: "#e0e0e0",
+              borderRadius: "8px",
+              lineHeight: "1.6",
+              whiteSpace: "pre-wrap",
+              overflow: "auto",
             }}
-          >
-            <h2 className="section-title" style={{ color: "#ffffff" }}>
-              <span className="section-icon">💻</span>
-              Code Editor
-            </h2>
+          />
+          <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
             <button
-              className="clear-btn"
-              onClick={clearCode}
-              title="Clear code"
-              style={{ color: "#ffffff", backgroundColor: "#333" }}
-            >
-              <span>🗑️</span>
-            </button>
-          </div>
-
-          <div className="code-editor">
-            <Editor
-              value={code}
-              onValueChange={(code) => setCode(code)}
-              highlight={(code) =>
-                prism.highlight(code, prism.languages.javascript, "javascript")
-              }
-              padding={20}
-              className="editor"
-              placeholder="Enter your code here..."
-              style={{
-                fontFamily:
-                  '"JetBrains Mono", "Fira Code", "Consolas", monospace',
-                fontSize: 14,
-                lineHeight: 1.6,
-                minHeight: "400px",
-                backgroundColor: "#1e1e1e",
-                color: "#d4d4d4",
-              }}
-            />
-          </div>
-
-          <div className="action-buttons">
-            <button
-              className={`review-btn ${isLoading ? "loading" : ""}`}
               onClick={reviewCode}
               disabled={isLoading}
               style={{
-                backgroundColor: isLoading ? "#555" : "#3a3a3a",
-                color: "#ffffff",
+                flex: 1,
+                padding: "10px",
+                backgroundColor: isLoading ? "#444" : "#3a3a3a",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "1rem",
+                cursor: "pointer",
               }}
             >
-              {isLoading ? (
-                <>
-                  <span className="spinner"></span>
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <span className="btn-icon">🚀</span>
-                  Review Code
-                </>
-              )}
+              {isLoading ? "🔎 Reviewing..." : "🚀 Review Code"}
+            </button>
+            <button
+              onClick={clearEditor}
+              style={{
+                padding: "10px 16px",
+                background: "#2a2a2a",
+                border: "1px solid #444",
+                color: "#fff",
+                borderRadius: "6px",
+                fontSize: "1rem",
+                cursor: "pointer",
+              }}
+            >
+              🗑️ Clear
             </button>
           </div>
+        </div>
+
+        {/* AI Review Panel */}
+        <div
+          style={{
+            flex: 1,
+            padding: "16px",
+            backgroundColor: "#1c1c1c",
+            borderLeft: "1px solid #333",
+            overflowY: "auto",
+            maxHeight: "calc(100vh - 60px)",
+          }}
+        >
+          <h2 style={{ marginBottom: "12px", color: "#fff" }}>📝 AI Review</h2>
 
           {error && (
             <div
-              className="error-message"
               style={{
-                backgroundColor: "#3a1a1a",
+                marginBottom: "12px",
                 color: "#ff6b6b",
-                borderLeft: "4px solid #ff3b3b",
+                fontSize: "0.85rem",
+                background: "#2a1a1a",
+                padding: "8px",
+                borderRadius: "6px",
+                border: "1px solid #882222",
               }}
             >
-              <span className="error-icon">⚠️</span>
               {error}
             </div>
           )}
-        </div>
 
-        <div
-          className="review-section"
-          style={{ backgroundColor: "#252525", border: "1px solid #333" }}
-        >
-          <div
-            className="section-header"
-            style={{
-              backgroundColor: "#1e1e1e",
-              borderBottom: "1px solid #333",
-            }}
-          >
-            <h2 className="section-title" style={{ color: "#ffffff" }}>
-              <span className="section-icon">📝</span>
-              AI Review
-            </h2>
-          </div>
-
-          <div
-            className="review-content"
-            style={{
-              color: "#e0e0e0",
-              maxHeight: "400px",
-              overflowY: "auto",
-              paddingRight: "10px",
-            }}
-          >
+          <div style={{ paddingRight: "8px" }}>
             {review ? (
               <Markdown rehypePlugins={[rehypeHighlight]}>{review}</Markdown>
             ) : (
-              <div className="empty-state" style={{ color: "#aaaaaa" }}>
-                <div className="empty-icon">🤖</div>
-                <h3 style={{ color: "#ffffff" }}>Ready to review your code!</h3>
+              <div style={{ color: "#999" }}>
+                <p>🤖 Ready to review your code.</p>
                 <p>
-                  Enter your code in the editor and click "Review Code" to get
-                  AI-powered feedback and suggestions.
+                  Paste some code and click <strong>"Review Code"</strong>.
                 </p>
               </div>
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
